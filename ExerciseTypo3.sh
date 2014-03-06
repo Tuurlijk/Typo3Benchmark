@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Excercise TYPO3 v 0.0.1
-# Call ExcerciseTypo3.rb for each git revision
+# Exercise TYPO3 v 0.0.1
+# Call ExerciseTypo3.rb for each git revision
 #
 # Copyright ⓒ 2014, Michiel Roos <michiel@maxserv.nl>
 #
@@ -27,11 +27,11 @@ function usage () {
 	cat << EOF
 usage: `basename $0` options
 
-TYPO3 excercise script.
+TYPO3 exercise script.
 
 OPTIONS:
    -s   Full path to TYPO3 site root directory containing a typo3_src folder.
-   -u   The base url of the website to excercise.
+   -u   The base url of the website to exercise.
    -l   The TYPO3 backend username. If omitted; 'admin' is used.
    -p   The TYPO3 backend password. If omitted; 'supersecret' is used.
    -r   The git revision to start from. If omitted; the latest revision is used.
@@ -123,68 +123,19 @@ EOF
 fi
 
 
-	# Cache tables to flush after preparation
-flushCacheTables=(
-	cache_extensions
-	cache_hash
-	cache_imagesizes
-	cache_md5params
-	cache_pages
-	cache_pagesection
-	cache_treelist
-	cache_typo3temp_log
-	cachingframework_cache_hash
-	cachingframework_cache_hash_tags
-	cachingframework_cache_pages
-	cachingframework_cache_pages_tags
-	cachingframework_cache_pagesection
-	cachingframework_cache_pagesection_tags
-	cf_cache_hash
-	cf_cache_hash_tags
-	cf_cache_pages
-	cf_cache_pages_tags
-	cf_cache_pagesection
-	cf_cache_pagesection_tags
-	cf_workspaces_cache
-	cf_workspaces_cache_tags
-	sys_workspace_cache
-	sys_workspace_cache_tags
-	tx_devlog
-	tx_dreknowledgebase_relations_cached
-	tx_extbase_cache_object
-	tx_extbase_cache_object_tags
-	tx_extbase_cache_reflection
-	tx_extbase_cache_reflection_tags
-	tx_ncstaticfilecache_file
-	tx_realurl_chashcache
-	tx_realurl_pathcache
-	tx_realurl_urldecodecache
-	tx_realurl_urlencodecache
-	tx_wecmap_cache
-)
-
-
 	# Clear caches
 function clearCaches () {
 	echo 2>&1 | tee -a $logFile
 	echo "Clearing typo3conf/temp_*" 2>&1 | tee -a $logFile
 	rm ${siteRoot}/typo3conf/temp_*
-	echo "Clearing typotemp/Cache" 2>&1 | tee -a $logFile
-	rm -rf ${siteRoot}/typo3temp/Cache
+	echo "Clearing typotemp/*" 2>&1 | tee -a $logFile
+	rm -rf ${siteRoot}/typo3temp/*
 }
 
 
-	# Ensure the _cli_tuesanitizer user exists
+	# Ensure the _cli_lowlevel user exists. Can be used to auto-update database using the tableupdater extension.
 function createCliUsers () {
 	echo 2>&1 | tee -a $logFile
-	echo "Creating _cli_tuesanitizer backend user" 2>&1 | tee -a $logFile
-	mysql -h $databaseHost -u $databaseUser -p$databasePassword -D $database -e " \
-			REPLACE INTO be_users \
-			SET \
-				username = '_cli_tuesanitizer', \
-				password = 'b49f7cfd50d0f8b4b53598752e2ea103',
-				usergroup = 77;"
-				# Usergroup 77: role_eindredacteur is needed for t3d export
 	echo "Creating _cli_lowlevel backend user" 2>&1 | tee -a $logFile
 	mysql -h $databaseHost -u $databaseUser -p$databasePassword -D $database -e " \
 			REPLACE INTO be_users \
@@ -196,14 +147,18 @@ function createCliUsers () {
 
   # Flush cache tables
 function flushCacheTables () {
-	local len=${#flushCacheTables[*]}
-	local i=0
 	echo 2>&1 | tee -a $logFile
-	echo "Flushing $len cache tables:" 2>&1 | tee -a $logFile
-	while [ $i -lt $len ]; do
-		echo "truncate table ${database}.${flushCacheTables[$i]}" 2>&1 | tee -a $logFile
-		mysql -h $databaseHost -u $databaseUser -p$databasePassword -e "truncate table ${database}.${flushCacheTables[$i]}" > /dev/null 2>&1
-		let i++
+	echo "Flushing cache tables:" 2>&1 | tee -a $logFile
+	mysql -h $databaseHost -u $databaseUser -p$databasePassword -D $database --skip-column-names -e " \
+			SELECT DISTINCT TABLE_NAME \
+			FROM INFORMATION_SCHEMA.COLUMNS \
+			WHERE ( \
+				TABLE_NAME LIKE '%cache%' \
+				OR TABLE_NAME LIKE 'cf_%' \
+			) \
+			AND TABLE_SCHEMA = '${database}';" | while read tableName; do
+		echo "truncate table ${database}.${tableName}"
+		mysql -h $databaseHost -u $databaseUser -p$databasePassword -e "truncate table ${database}.${tableName}" > /dev/null 2>&1
 	done
 }
 
@@ -226,31 +181,35 @@ function spinner() {
 }
 
 
-	# Run
-function excercise() {
-	local i=0
-	local len=10
-	while [ $i -lt $len ]; do
+	# Exercise!
+function exercise() {
+	local initialRevision=false
+	while [ $initialRevision == false ]; do
+		pushd $sourceDirectory > /dev/null 2>&1
 		currentRevision=`git rev-parse HEAD`
-		echo "Excercising revision ${currentRevision} . . ." 2>&1
+		popd > /dev/null 2>&1
+		echo "Exercising revision ${currentRevision}" 2>&1 | tee -a $logFile
 		clearCaches
 		flushCacheTables
-		(ruby ${benchMarkDirectory}/ExcerciseTypo3.rb -v v -- ${currentRevision} ${url} ${adminPassword}) &
+		(ruby ExerciseTypo3.rb -v v -- ${currentRevision} ${url} ${adminPassword}) &
 		spinner $!
-		git reset --hard HEAD~1
-		let i++
+		pushd $sourceDirectory > /dev/null 2>&1
+		if git reset --hard HEAD~1 | grep -i "Initial revision"; then
+			initialRevision=true
+		fi
+		popd > /dev/null 2>&1
 	done
 }
 
 
-pushd $sourceDirectory
+pushd $sourceDirectory > /dev/null 2>&1
 if [ -z "$revision" ]; then
-	echo "Fetching head . . ."
-	git pull
+	echo "Fetching head"
+	git pull 2>&1 | tee -a $logFile
 else
-	echo "Checking out revision: ${revision} . . ."
-	git checkout ${revision}
+	echo "Checking out revision: ${revision}"
+	git checkout ${revision} 2>&1 | tee -a $logFile
 fi
+popd > /dev/null 2>&1
 createCliUsers
-excercise
-popd
+exercise

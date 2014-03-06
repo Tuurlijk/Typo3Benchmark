@@ -1,0 +1,16 @@
+#
+# Backend requests
+#
+# - One per line
+# - Whitespace is trimmed
+# - Empty lines are ignored
+#
+
+/typo3/backend.php
+/typo3/mod.php?&id=0&M=tools_txreportsM1&SET[function]=tx_reports.status
+/typo3/mod.php?M=tools_em
+/typo3/mod.php?M=tools_log
+/typo3/mod.php?M=web_list&id=0
+/typo3/sysext/cms/layout/db_layout.php?id=6
+/typo3/sysext/tstemplate/ts/index.php?&id=1&SET[ts_browser_type]=setup
+/typo3/sysext/tstemplate/ts/index.php?&id=1&SET[function]=tx_tstemplateobjbrowser

@@ -1,0 +1,17 @@
+#
+# Frontend requests
+#
+# - One per line
+# - Whitespace is trimmed
+# - Empty lines are ignored
+#
+
+/
+/examples/file-downloads/
+/examples/frames/
+/examples/image-groups/
+/examples/images-with-links/
+/examples/languages-characters/
+/examples/site-map/
+/examples/tables/
+/examples/text-and-images/
