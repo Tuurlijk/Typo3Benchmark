@@ -10,33 +10,35 @@
 # PARTICULAR PURPOSE. See the GNU General Public License for more details:
 # http://www.gnu.org/licenses/gpl.txt
 
-require "json"
-require "selenium-webdriver"
-gem "test-unit"
-require "test/unit"
+require 'json'
+require 'selenium-webdriver'
+gem 'test-unit'
+require 'test/unit'
+require 'digest/md5'
 
 class ExerciseTypo3 < Test::Unit::TestCase
 
 	def setup
-		@revision = ARGV[0] || raise("Please provide revision number as first argument")
-		baseUrl = ARGV[1] || raise("Please provide a base url as second argument")
+		@revision = ARGV[0] || raise('Please provide revision number as first argument')
+		baseUrl = ARGV[1] || raise('Please provide a base url as second argument')
 		@baseUrl = baseUrl.gsub(/\/+$/, '')
-		@password = ARGV[2] || raise("Please provide TYPO3 backend password as third argument")
+		@password = ARGV[2] || raise('Please provide TYPO3 backend password as third argument')
 
-		profile = Selenium::WebDriver::Firefox::Profile.new
-		profile['browser.cache.disk.enable'] = false
-		profile['browser.cache.memory.enable'] = false
-		profile['browser.cache.offline.enable'] = false
-		profile['network.http.use-cache'] = false
+#		profile = Selenium::WebDriver::Firefox::Profile.new
+#		profile['browser.cache.disk.enable'] = false
+#		profile['browser.cache.memory.enable'] = false
+#		profile['browser.cache.offline.enable'] = false
+#		profile['network.http.use-cache'] = false
 
-		@browser = Selenium::WebDriver.for :firefox, :profile => profile
+#		@browser = Selenium::WebDriver.for :firefox, :profile => profile
+		@browser = Selenium::WebDriver.for :phantomjs
 
 		# This cookie setting seems not to work for me, hence the _profile=1 below
 		#@browser.manage.add_cookie(:name => "XHProf_Profile", :value => 1)
-		@parameters = "gitRevision=" + @revision + "&_profile=1"
+		@parameters = 'gitRevision=' + @revision + '&_profile=1'
 
 		@accept_next_alert = true
-		@browser.manage.timeouts.implicit_wait = 30
+		@browser.manage.timeouts.implicit_wait = 10
 		@verification_errors = []
 	end
 
@@ -46,23 +48,32 @@ class ExerciseTypo3 < Test::Unit::TestCase
 	end
 
 	def test_exercise_typo3_backend
+		@browser.manage.window.resize_to(1024, 768)
+
 		# Warm the cache
-		@browser.get(@baseUrl + "/typo3/?" + @parameters)
+		@browser.get(@baseUrl + '/typo3/?' + @parameters)
 		sleep 2
 
 		# Login
-		@browser.get(@baseUrl + "/typo3/?" + @parameters)
-		verify { assert_match /Login to the TYPO3 Backend/, @browser.find_element(:id, "t3-login-form-inner").text }
-		@browser.find_element(:id, "t3-username").clear
-		@browser.find_element(:id, "t3-username").send_keys "admin"
-		@browser.find_element(:id, "t3-password").clear
-		@browser.find_element(:id, "t3-password").send_keys @password
-		@browser.find_element(:id, "t3-login-submit").click
+		@browser.get(@baseUrl + '/typo3/?' + @parameters)
+		#@browser.save_screenshot('/tmp/' + @revision + '-' + Digest::MD5::hexdigest(@baseUrl + '/typo3/') + '.png')
+		verify { assert_match /Login to the TYPO3 Backend/, @browser.find_element(:id, 't3-login-form-inner').text }
+		@browser.find_element(:id, 't3-username').clear
+		@browser.find_element(:id, 't3-username').send_keys 'admin'
+		@browser.find_element(:id, 't3-password').clear
+		@browser.find_element(:id, 't3-password').send_keys @password
+		@browser.find_element(:id, 't3-login-submit').click
 
 		getRequestsFromFile('backendRequests.txt')
 	end
 
 	def test_exercise_typo3_frontend
+		@browser.manage.window.resize_to(1024, 768)
+
+		# Warm the cache
+		@browser.get(@baseUrl + '/?' + @parameters)
+		sleep 2
+
 		getRequestsFromFile('frontendRequests.txt')
 	end
 
@@ -76,6 +87,7 @@ class ExerciseTypo3 < Test::Unit::TestCase
 			next if line =~ /\#.*/
 			@browser.get(@baseUrl + line + (line =~ /\?.*/ ? '&' : '?' ) + @parameters)
 			sleep sleepSeconds
+			#@browser.save_screenshot('/tmp/' + @revision + '-' + Digest::MD5::hexdigest(@baseUrl + line) + '.png')
 		end
 	end
 

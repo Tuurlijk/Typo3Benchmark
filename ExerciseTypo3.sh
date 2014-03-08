@@ -125,18 +125,16 @@ fi
 
 	# Clear caches
 function clearCaches () {
-	echo 2>&1 | tee -a $logFile
-	echo "Clearing typo3conf/temp_*" 2>&1 | tee -a $logFile
+	echo "Clearing typo3conf/temp_*" | tee -a $logFile
 	rm ${siteRoot}/typo3conf/temp_*
-	echo "Clearing typotemp/*" 2>&1 | tee -a $logFile
+	echo "Clearing typotemp/*" | tee -a $logFile
 	rm -rf ${siteRoot}/typo3temp/*
 }
 
 
 	# Ensure the _cli_lowlevel user exists. Can be used to auto-update database using the tableupdater extension.
 function createCliUsers () {
-	echo 2>&1 | tee -a $logFile
-	echo "Creating _cli_lowlevel backend user" 2>&1 | tee -a $logFile
+	echo "Creating _cli_lowlevel backend user" | tee -a $logFile
 	mysql -h $databaseHost -u $databaseUser -p$databasePassword -D $database -e " \
 			REPLACE INTO be_users \
 			SET \
@@ -147,8 +145,7 @@ function createCliUsers () {
 
   # Flush cache tables
 function flushCacheTables () {
-	echo 2>&1 | tee -a $logFile
-	echo "Flushing cache tables:" 2>&1 | tee -a $logFile
+	echo "Flushing cache tables" | tee -a $logFile
 	mysql -h $databaseHost -u $databaseUser -p$databasePassword -D $database --skip-column-names -e " \
 			SELECT DISTINCT TABLE_NAME \
 			FROM INFORMATION_SCHEMA.COLUMNS \
@@ -157,7 +154,7 @@ function flushCacheTables () {
 				OR TABLE_NAME LIKE 'cf_%' \
 			) \
 			AND TABLE_SCHEMA = '${database}';" | while read tableName; do
-		echo "truncate table ${database}.${tableName}"
+		# echo "truncate table ${database}.${tableName}"
 		mysql -h $databaseHost -u $databaseUser -p$databasePassword -e "truncate table ${database}.${tableName}" > /dev/null 2>&1
 	done
 }
@@ -184,15 +181,30 @@ function spinner() {
 	# Exercise!
 function exercise() {
 	local initialRevision=false
+	local status
 	while [ $initialRevision == false ]; do
 		pushd $sourceDirectory > /dev/null 2>&1
 		currentRevision=`git rev-parse HEAD`
 		popd > /dev/null 2>&1
-		echo "Exercising revision ${currentRevision}" 2>&1 | tee -a $logFile
+		echo | tee -a $logFile
+		echo "Exercising revision ${currentRevision}" | tee -a $logFile
 		clearCaches
 		flushCacheTables
-		(ruby ExerciseTypo3.rb -v v -- ${currentRevision} ${url} ${adminPassword}) &
-		spinner $!
+		echo "Running benchmark tests" | tee -a $logFile
+		ruby ExerciseTypo3.rb -v v -- ${currentRevision} ${url} ${adminPassword}
+		status=$?
+		if [ $status -ne 0 ]; then
+			cat << EOF
+Failure detected when benchmarking. Please fix the scripts to prevent TYPO3
+breakage for this revision so we can properly benchmark it.
+
+revision: ${currentRevision}
+ logfile: ${logFile}
+
+Come back soon!
+EOF
+			exit
+		fi
 		pushd $sourceDirectory > /dev/null 2>&1
 		if git reset --hard HEAD~1 | grep -i "Initial revision"; then
 			initialRevision=true
@@ -204,10 +216,10 @@ function exercise() {
 
 pushd $sourceDirectory > /dev/null 2>&1
 if [ -z "$revision" ]; then
-	echo "Fetching head"
+	echo "Fetching head" | tee -a $logFile
 	git pull 2>&1 | tee -a $logFile
 else
-	echo "Checking out revision: ${revision}"
+	echo "Checking out revision: ${revision}" | tee -a $logFile
 	git checkout ${revision} 2>&1 | tee -a $logFile
 fi
 popd > /dev/null 2>&1
