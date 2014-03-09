@@ -181,6 +181,7 @@ function spinner() {
 	# Exercise!
 function exercise() {
 	local initialRevision=false
+	local revisionMessage
 	local status
 	while [ $initialRevision == false ]; do
 		pushd $sourceDirectory > /dev/null 2>&1
@@ -188,6 +189,8 @@ function exercise() {
 		popd > /dev/null 2>&1
 		echo | tee -a $logFile
 		echo "Exercising revision ${currentRevision}" | tee -a $logFile
+		echo $revisionMessage | tee -a $logFile
+		git show -s --format=%ci | tee -a $logFile
 		clearCaches
 		flushCacheTables
 		echo "Running benchmark tests" | tee -a $logFile
@@ -206,7 +209,8 @@ EOF
 			exit
 		fi
 		pushd $sourceDirectory > /dev/null 2>&1
-		if git reset --hard HEAD~1 | grep -i "Initial revision"; then
+		revisionMessage=$(git reset --hard HEAD~1)
+		if echo $revisionMessage | grep -i "Initial revision"; then
 			initialRevision=true
 		fi
 		popd > /dev/null 2>&1
