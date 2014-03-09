@@ -190,7 +190,7 @@ function exercise() {
 		echo | tee -a $logFile
 		echo "Exercising revision ${currentRevision}" | tee -a $logFile
 		echo $revisionMessage | tee -a $logFile
-		git show -s --format=%ci | tee -a $logFile
+		git show -s --format=%ci $currentRevision | tee -a $logFile
 		clearCaches
 		flushCacheTables
 		echo "Running benchmark tests" | tee -a $logFile
