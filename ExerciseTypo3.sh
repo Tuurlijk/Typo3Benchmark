@@ -12,7 +12,7 @@
 
 
 	# Basic setup
-now=`date "+%Y-%m-%d_%H-%M"`
+now=$(date "+%Y-%m-%d_%H-%M")
 benchMarkDirectory=`pwd`
 adminUser=admin
 adminPassword=supersecret
@@ -95,13 +95,13 @@ localconf="${siteRoot}/typo3conf/localconf.php"
 
 
 	# Find database credentials
-database=`grep "typo_db " $localconf | tr -d "\$\'\;"`
+database=$(grep "typo_db " $localconf | tr -d "\$\'\;")
 database=${database#typo_db = }
-databaseHost=`grep "typo_db_host " $localconf | tr -d "\$\'\;"`
+databaseHost=$(grep "typo_db_host " $localconf | tr -d "\$\'\;")
 databaseHost=${databaseHost#typo_db_host = }
-databaseUser=`grep "typo_db_username " $localconf | tr -d "\$\'\;"`
+databaseUser=$(grep "typo_db_username " $localconf | tr -d "\$\'\;")
 databaseUser=${databaseUser#typo_db_username = }
-databasePassword=`grep "typo_db_password " $localconf | tr -d "\$\'\;"`
+databasePassword=$(grep "typo_db_password " $localconf | tr -d "\$\'\;")
 databasePassword=${databasePassword#typo_db_password = }
 if [[ -z $database ]] || [[ -z $databaseHost ]] || [[ -z $databaseUser ]] || [[ -z $databasePassword ]]
 then
@@ -185,12 +185,9 @@ function exercise() {
 	local status
 	while [ $initialRevision == false ]; do
 		pushd $sourceDirectory > /dev/null 2>&1
-		currentRevision=`git rev-parse HEAD`
+		currentRevision=$(git rev-parse HEAD)
+		git show -s --format="%n%H%n%s%n%ci%n" HEAD | tee -a $logFile
 		popd > /dev/null 2>&1
-		echo | tee -a $logFile
-		echo "Exercising revision ${currentRevision}" | tee -a $logFile
-		echo $revisionMessage | tee -a $logFile
-		git show -s --format=%ci $currentRevision | tee -a $logFile
 		clearCaches
 		flushCacheTables
 		echo "Running benchmark tests" | tee -a $logFile
@@ -209,7 +206,8 @@ EOF
 			exit
 		fi
 		pushd $sourceDirectory > /dev/null 2>&1
-		revisionMessage=$(git reset --hard HEAD~1)
+		git reset --hard HEAD~1 > /dev/null 2>&1
+		revisionMessage=$(git show -s --format=%s HEAD)
 		if echo $revisionMessage | grep -i "Initial revision"; then
 			initialRevision=true
 		fi
@@ -223,7 +221,6 @@ if [ -z "$revision" ]; then
 	echo "Fetching head" | tee -a $logFile
 	git pull 2>&1 | tee -a $logFile
 else
-	echo "Checking out revision: ${revision}" | tee -a $logFile
 	git checkout ${revision} 2>&1 | tee -a $logFile
 fi
 popd > /dev/null 2>&1
