@@ -31,7 +31,6 @@ class ExerciseTypo3 < Test::Unit::TestCase
 
 #		@browser = Watir::Browser.new :firefox, :profile => profile
 		@browser = Watir::Browser.new :phantomjs
-		@browser.speed = :fast
 
 		# This cookie setting seems not to work for me, hence the _profile=1 below
 		#@browser.manage.add_cookie(:name => "XHProf_Profile", :value => 1)
